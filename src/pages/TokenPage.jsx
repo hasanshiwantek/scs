@@ -32,11 +32,9 @@ export default function TokenPage() {
       const data = await res.json().catch(() => ({}));
 
       console.log("Response:", data);
+    if(data?.status && data?.data){
 
-      if (!res.ok) {
-        setError(data.message || "Something went wrong.");
-        return;
-      }
+    
 
       // ✅ Redux me save
       dispatch(
@@ -48,7 +46,8 @@ export default function TokenPage() {
 
       // Navigate to dashboard
       navigate("/orders");
-
+    } else {
+      setError(data?.message || "Invalid API key. Please try again.");    }
     } catch (err) {
       console.error(err);
       setError("Request failed. Check console.");

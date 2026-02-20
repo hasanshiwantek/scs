@@ -1,14 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_KEY_STORAGE } from './TokenPage';
+import { useDispatch, useSelector } from 'react-redux';
+import { clearUser } from '../store/userSlice';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'add-booking', label: 'Add Booking' },
-  { id: 'print-labels', label: 'Print Labels' },
-  { id: 'loadsheet', label: 'Generate Loadsheet' },
-  { id: 'cancel', label: 'Cancel Shipments' },
-  { id: 'logs', label: 'Logs' },
   { id: 'settings', label: 'Settings' },
 ];
 
@@ -25,7 +22,11 @@ function getMockOrders() {
 
 export default function OrdersPage() {
   const navigate = useNavigate();
-  const [apiKey, setApiKey] = useState('');
+  const dispatch = useDispatch();
+
+  // ✅ Redux se apiKey lo
+  const apiKey = useSelector((state) => state.user.userData?.apiKey || '');
+ console.log("API Key from Redux:", apiKey); // Debugging line
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -39,14 +40,13 @@ export default function OrdersPage() {
   });
 
   useEffect(() => {
-    const key = localStorage.getItem(API_KEY_STORAGE);
-    if (!key) {
+    // ✅ Redux mein apiKey nahi hai to login page pe bhejo
+    if (!apiKey) {
       navigate('/', { replace: true });
       return;
     }
-    setApiKey(key);
-    loadOrders(key);
-  }, [navigate]);
+    loadOrders(apiKey);
+  }, [apiKey, navigate]);
 
   async function loadOrders(key) {
     setLoading(true);
@@ -119,6 +119,7 @@ export default function OrdersPage() {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)));
   }
 
+  // apiKey Redux mein nahi hai to kuch render mat karo (redirect ho raha hai)
   if (!apiKey) return null;
 
   const EyeIcon = () => (
@@ -135,7 +136,15 @@ export default function OrdersPage() {
     <div className="min-h-screen bg-[#f6f6f7]">
       <header className="bg-white border-b border-[#e1e3e5] shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
         <div className="max-w-[1400px] mx-auto px-6 py-4">
-          <h1 className="text-xl font-bold text-[#202223]">SCS Courier Service</h1>
+<div className="flex items-center justify-between">
+  <h1 className="text-xl font-bold text-[#202223]">SCS Courier Service</h1>
+  <button
+    onClick={() => { dispatch(clearUser()); navigate('/', { replace: true }); }}
+    className="text-sm w-full text-[#6d7175] hover:text-[#d72c0d] transition font-medium"
+  >
+    Logout
+  </button>
+</div>
           <nav className="flex flex-wrap gap-x-6 gap-y-1 mt-3">
             {NAV_ITEMS.map((item) => (
               <a
