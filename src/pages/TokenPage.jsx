@@ -12,13 +12,7 @@ export default function TokenPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  
-  let app = null;
-  try {
-    app = useAppBridge(); // Shopify Admin mein kaam karega
-  } catch (e) {
-    console.warn("App Bridge not available (local env)");
-  }
+  const app = useAppBridge(); // ✅ const + top level
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -42,7 +36,7 @@ export default function TokenPage() {
         return token;
       }
     } catch (e) {
-      console.warn("Could not get session token:", e);
+      console.warn("Session token nahi mila:", e);
     }
     return null;
   }
@@ -60,17 +54,12 @@ export default function TokenPage() {
       const sessionToken = await getToken();
       console.log("Session Token:", sessionToken);
 
-      const headers = {
-        "Content-Type": "application/json",
-      };
-
-      // Token mila toh header mein bhejo
+      const headers = { "Content-Type": "application/json" };
       if (sessionToken) {
         headers["Authorization"] = `Bearer ${sessionToken}`;
       }
 
-      const url = "https://scs.advertsedge.com/api/connect-app";
-      const res = await fetch(url, {
+      const res = await fetch("https://scs.advertsedge.com/api/connect-app", {
         method: "POST",
         headers,
         body: JSON.stringify({ app_token: apiKey.trim() }),
