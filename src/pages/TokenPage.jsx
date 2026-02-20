@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from "react-redux";
 import { setUserData } from "../store/userSlice";
-import { useAppBridge } from '@shopify/app-bridge-react';
 
 const API_KEY_STORAGE = 'scs_api_key';
+const IS_SHOPIFY = Boolean(window.shopify); // ✅ Shopify mein hai ya nahi
 
 export default function TokenPage() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(API_KEY_STORAGE) || '');
@@ -12,7 +12,6 @@ export default function TokenPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const app = useAppBridge(); // ✅ const + top level
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -29,14 +28,15 @@ export default function TokenPage() {
     }
   }, []);
 
-  async function getToken() {
+  async function getSessionToken() {
     try {
-      if (app && typeof app.idToken === 'function') {
-        const token = await app.idToken();
+      if (IS_SHOPIFY && window.shopify?.idToken) {
+        const token = await window.shopify.idToken();
+        console.log("Session Token:", token);
         return token;
       }
     } catch (e) {
-      console.warn("Session token nahi mila:", e);
+      console.warn("Token error:", e);
     }
     return null;
   }
@@ -51,8 +51,7 @@ export default function TokenPage() {
 
     setLoading(true);
     try {
-      const sessionToken = await getToken();
-      console.log("Session Token:", sessionToken);
+      const sessionToken = await getSessionToken();
 
       const headers = { "Content-Type": "application/json" };
       if (sessionToken) {
