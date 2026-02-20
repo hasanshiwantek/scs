@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from "react-redux";
+import { setUserData } from "../store/userSlice";
 
 const API_KEY_STORAGE = 'scs_api_key';
 
@@ -8,33 +10,48 @@ export default function TokenPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
+    setError("");
     if (!apiKey.trim()) {
-      setError('Please enter your API key.');
+      setError("Please enter your API key.");
       return;
     }
+
     setLoading(true);
     try {
-      const validateUrl = import.meta.env.VITE_API_VALIDATE_URL || '';
-      if (validateUrl) {
-        const res = await fetch(validateUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ api_key: apiKey.trim() }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          setError(data.message || 'Invalid API key. Please try again.');
-          return;
-        }
+      const url = "https://scs.advertsedge.com/api/connect-app";
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ app_token: apiKey.trim() }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      console.log("Response:", data);
+
+      if (!res.ok) {
+        setError(data.message || "Something went wrong.");
+        return;
       }
-      localStorage.setItem(API_KEY_STORAGE, apiKey.trim());
-      navigate('/orders', { replace: true });
+
+      // ✅ Redux me save
+      dispatch(
+        setUserData({
+          user: data.data,     // API ka response user object
+          apiKey: apiKey.trim() // token bhi store karenge
+        })
+      );
+
+      // Navigate to dashboard
+      navigate("/orders");
+
     } catch (err) {
-      setError('Could not validate API key. Please check your connection.');
+      console.error(err);
+      setError("Request failed. Check console.");
     } finally {
       setLoading(false);
     }
