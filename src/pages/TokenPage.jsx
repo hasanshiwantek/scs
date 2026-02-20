@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from "react-redux";
 import { setUserData } from "../store/userSlice";
@@ -11,6 +11,15 @@ export default function TokenPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+    // ✅ App load hote hi check karo
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shop = params.get("shop");
+      console.log("Shop param:", shop); // ← yeh add karo
+    if (shop) {
+      window.location.href = `https://scs.advertsedge.com/auth/shopify?shop=${shop}`;
+    }
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
