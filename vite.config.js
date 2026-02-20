@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: {
-    allowedHosts: ["internecine-unvigorous-cortez.ngrok-free.dev"],
+  resolve: {
+    dedupe: ["react", "react-dom", "react-redux"], // 👈 add react-redux too
   },
 });
