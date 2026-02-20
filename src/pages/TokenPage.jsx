@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from "react-redux";
 import { setUserData } from "../store/userSlice";
-import { useAppBridge } from '@shopify/app-bridge-react';
 
 const API_KEY_STORAGE = 'scs_api_key';
+const IS_SHOPIFY = Boolean(window.shopify); // ✅ Shopify mein hai ya nahi
 
 export default function TokenPage() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(API_KEY_STORAGE) || '');
@@ -12,13 +12,6 @@ export default function TokenPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  
-  let app = null;
-  try {
-    app = useAppBridge(); // Shopify Admin mein kaam karega
-  } catch (e) {
-    console.warn("App Bridge not available (local env)");
-  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -35,14 +28,15 @@ export default function TokenPage() {
     }
   }, []);
 
-  async function getToken() {
+  async function getSessionToken() {
     try {
-      if (app && typeof app.idToken === 'function') {
-        const token = await app.idToken();
+      if (IS_SHOPIFY && window.shopify?.idToken) {
+        const token = await window.shopify.idToken();
+        console.log("Session Token:", token);
         return token;
       }
     } catch (e) {
-      console.warn("Could not get session token:", e);
+      console.warn("Token error:", e);
     }
     return null;
   }
@@ -57,20 +51,14 @@ export default function TokenPage() {
 
     setLoading(true);
     try {
-      const sessionToken = await getToken();
-      console.log("Session Token:", sessionToken);
+      const sessionToken = await getSessionToken();
 
-      const headers = {
-        "Content-Type": "application/json",
-      };
-
-      // Token mila toh header mein bhejo
+      const headers = { "Content-Type": "application/json" };
       if (sessionToken) {
         headers["Authorization"] = `Bearer ${sessionToken}`;
       }
 
-      const url = "https://scs.advertsedge.com/api/connect-app";
-      const res = await fetch(url, {
+      const res = await fetch("https://scs.advertsedge.com/api/connect-app", {
         method: "POST",
         headers,
         body: JSON.stringify({ app_token: apiKey.trim() }),
