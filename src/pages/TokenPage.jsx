@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from "react-redux";
 import { setUserData } from "../store/userSlice";
+import { useAppBridge } from '@shopify/app-bridge-react';
 
 const API_KEY_STORAGE = 'scs_api_key';
 
@@ -11,15 +12,34 @@ export default function TokenPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-    // ✅ App load hote hi check karo
+  const app = useAppBridge(); // ✅ const + top level
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const shop = params.get("shop");
-      console.log("Shop param:", shop); // ← yeh add karo
+    console.log("Shop param:", shop);
+
     if (shop) {
-      window.location.href = `https://scs.advertsedge.com/auth/shopify?shop=${shop}`;
+      const redirectUrl = `https://scs.advertsedge.com/auth/shopify?shop=${shop}`;
+      if (window.top !== window.self) {
+        window.top.location.href = redirectUrl;
+      } else {
+        window.location.href = redirectUrl;
+      }
     }
   }, []);
+
+  async function getToken() {
+    try {
+      if (app && typeof app.idToken === 'function') {
+        const token = await app.idToken();
+        return token;
+      }
+    } catch (e) {
+      console.warn("Session token nahi mila:", e);
+    }
+    return null;
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -31,32 +51,32 @@ export default function TokenPage() {
 
     setLoading(true);
     try {
-      const url = "https://scs.advertsedge.com/api/connect-app";
-      const res = await fetch(url, {
+      const sessionToken = await getToken();
+      console.log("Session Token:", sessionToken);
+
+      const headers = { "Content-Type": "application/json" };
+      if (sessionToken) {
+        headers["Authorization"] = `Bearer ${sessionToken}`;
+      }
+
+      const res = await fetch("https://scs.advertsedge.com/api/connect-app", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ app_token: apiKey.trim() }),
       });
 
       const data = await res.json().catch(() => ({}));
-
       console.log("Response:", data);
-    if(data?.status && data?.data){
 
-    
-
-      // ✅ Redux me save
-      dispatch(
-        setUserData({
-          user: data.data,     // API ka response user object
-          apiKey: apiKey.trim() // token bhi store karenge
-        })
-      );
-
-      // Navigate to dashboard
-      navigate("/orders");
-    } else {
-      setError(data?.message || "Invalid API key. Please try again.");    }
+      if (data?.status && data?.data) {
+        dispatch(setUserData({
+          user: data.data,
+          apiKey: apiKey.trim()
+        }));
+        navigate("/orders");
+      } else {
+        setError(data?.message || "Invalid API key. Please try again.");
+      }
     } catch (err) {
       console.error(err);
       setError("Request failed. Check console.");
@@ -122,7 +142,6 @@ export default function TokenPage() {
             </button>
           </form>
         </div>
-
         <p className="mt-5 text-center text-xs text-[#8c9196]">
           Get your API key from the Laravel admin dashboard after signing up.
         </p>
