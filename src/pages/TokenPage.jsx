@@ -14,18 +14,24 @@ export default function TokenPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
 useEffect(() => {
   const params = new URLSearchParams(window.location.search);
   const shop = params.get("shop");
   console.log("Shop param:", shop);
 
   if (shop) {
-    // Shopify App Bridge redirect
-    const redirect = Redirect.create(app);
-    redirect.dispatch(
-      Redirect.Action.REMOTE,
-      `https://scs.advertsedge.com/auth/shopify?shop=${shop}`
-    );
+    // Shopify ke liye endpoint hit karna, redirect nahi
+    fetch(`https://scs.advertsedge.com/auth/shopify?shop=${shop}`, {
+      method: "GET", // agar GET hai to, ya "POST" agar API POST expect kare
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Response from Shopify auth endpoint:", data);
+      })
+      .catch((err) => {
+        console.error("Error hitting Shopify auth endpoint:", err);
+      });
   }
 }, []);
 
