@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from "react-redux";
 import { setUserData } from "../store/userSlice";
+import app from "../app-bridge";  // 👈 import app-bridge.js
+import { Redirect } from "@shopify/app-bridge/actions";
 
 const API_KEY_STORAGE = 'scs_api_key';
 const IS_SHOPIFY = Boolean(window.shopify); // ✅ Shopify mein hai ya nahi
@@ -12,21 +14,20 @@ export default function TokenPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const shop = params.get("shop");
+  console.log("Shop param:", shop);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const shop = params.get("shop");
-    console.log("Shop param:", shop);
-
-    if (shop) {
-      const redirectUrl = `https://scs.advertsedge.com/auth/shopify?shop=${shop}`;
-      if (window.top !== window.self) {
-        window.top.location.href = redirectUrl;
-      } else {
-        window.location.href = redirectUrl;
-      }
-    }
-  }, []);
+  if (shop) {
+    // Shopify App Bridge redirect
+    const redirect = Redirect.create(app);
+    redirect.dispatch(
+      Redirect.Action.REMOTE,
+      `https://scs.advertsedge.com/auth/shopify?shop=${shop}`
+    );
+  }
+}, []);
 
   async function getSessionToken() {
     try {
