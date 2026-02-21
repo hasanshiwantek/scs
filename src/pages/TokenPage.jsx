@@ -125,6 +125,7 @@ const TokenPage = () => {
 
             <input
               type="password"
+              autoComplete="new-password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Enter your API key"
