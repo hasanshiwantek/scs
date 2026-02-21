@@ -26,14 +26,10 @@ const TokenPage = () => {
     shopParam &&
     hostParam;
 
-  // ✅ Only hit Shopify auth endpoint when inside Shopify
+  // ✅ When inside Shopify, send user to OAuth via full-page redirect (fetch would follow redirect to Shopify and hit CORS)
   useEffect(() => {
     if (IS_SHOPIFY) {
-      fetch(
-        `https://scs.advertsedge.com/auth/shopify?shop=${shopParam}`
-      ).catch((err) =>
-        console.error("Shopify auth error:", err)
-      );
+      window.location.href = `/api-proxy/auth/shopify?shop=${shopParam}`;
     }
   }, [IS_SHOPIFY, shopParam]);
 
@@ -73,7 +69,7 @@ const TokenPage = () => {
       }
 
       const response = await fetch(
-        "https://scs.advertsedge.com/api/connect-app",
+        "/api-proxy/api/connect-app",
         {
           method: "POST",
           headers,

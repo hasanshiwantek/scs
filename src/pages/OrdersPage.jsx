@@ -48,10 +48,12 @@ export default function OrdersPage() {
     loadOrders(apiKey);
   }, [apiKey, navigate]);
 
+  const apiBase = '/api-proxy'; // proxy bypasses CORS (vite dev + Vercel rewrites)
+
   async function loadOrders(key) {
     setLoading(true);
     try {
-      const ordersUrl = import.meta.env.VITE_API_ORDERS_URL || '';
+      const ordersUrl = import.meta.env.VITE_API_ORDERS_URL || `${apiBase}/api/orders`;
       if (ordersUrl) {
         const res = await fetch(ordersUrl, {
           headers: { Authorization: `Bearer ${key}` },
@@ -104,7 +106,7 @@ export default function OrdersPage() {
 
   function handleProceed() {
     const selected = orders.filter((o) => selectedIds.has(o.id));
-    const submitUrl = import.meta.env.VITE_API_UPLOAD_BOOKING_URL || '';
+    const submitUrl = import.meta.env.VITE_API_UPLOAD_BOOKING_URL || `${apiBase}/api/push-orders`;
     if (submitUrl && selected.length > 0) {
       fetch(submitUrl, {
         method: 'POST',
