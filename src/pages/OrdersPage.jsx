@@ -107,12 +107,17 @@ export default function OrdersPage() {
   function handleProceed() {
     const selected = orders.filter((o) => selectedIds.has(o.id));
     const submitUrl = import.meta.env.VITE_API_UPLOAD_BOOKING_URL || `${apiBase}/api/push-orders`;
+    const payload = { order_ids: selected.map((o) => o.id), orders: selected };
+    console.log("[API] push-orders REQUEST:", { url: submitUrl, method: "POST", payload });
     if (submitUrl && selected.length > 0) {
       fetch(submitUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ order_ids: selected.map((o) => o.id), orders: selected }),
-      }).then((r) => r.json()).then(console.log).catch(console.error);
+        body: JSON.stringify(payload),
+      })
+        .then((r) => r.json().then((data) => ({ status: r.status, ok: r.ok, data })))
+        .then((res) => console.log("[API] push-orders RESPONSE:", res))
+        .catch((err) => console.error("[API] push-orders ERROR:", err));
     }
     alert(`Selected ${selected.length} order(s). Integrate with your Laravel API when ready.`);
   }

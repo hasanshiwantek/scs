@@ -75,16 +75,19 @@ const TokenPage = () => {
         headers.Authorization = `Bearer ${sessionToken}`;
       }
 
-      const response = await fetch(
-        "/api-proxy/api/connect-app",
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ app_token: apiKey.trim() }),
-        }
-      );
+      const url = "/api-proxy/api/connect-app";
+      const body = { app_token: apiKey.trim() };
+      console.log("[API] connect-app REQUEST:", { url, method: "POST", body, hasAuth: !!sessionToken });
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
 
       const data = await response.json().catch(() => ({}));
+
+      console.log("[API] connect-app RESPONSE:", { status: response.status, ok: response.ok, data });
 
       if (data?.status && data?.data) {
         dispatch(
@@ -101,7 +104,7 @@ const TokenPage = () => {
         setError(data?.message || "Invalid API key.");
       }
     } catch (err) {
-      console.error(err);
+      console.error("[API] connect-app ERROR:", err);
       setError("Request failed.");
     } finally {
       setLoading(false);
@@ -121,13 +124,16 @@ const TokenPage = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="px-8 pb-8 pt-5">
+          <form onSubmit={handleSubmit} className="px-8 pb-8 pt-5" autoComplete="on">
+            {/* Hidden for accessibility (browser suggests username+password form) */}
+            <input type="text" name="username" autoComplete="username" className="sr-only" tabIndex={-1} aria-hidden="true" readOnly defaultValue=" " />
             <label className="block text-sm font-medium text-[#202223] mb-1.5">
               API Key
             </label>
 
             <input
               type="password"
+              name="apiKey"
               autoComplete="new-password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
