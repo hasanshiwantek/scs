@@ -12,9 +12,10 @@
         var shop = params.get('shop') || 'test-store.myshopify.com';
         var host = params.get('host') || '';
         var apiKey = 'a2afe2f64c425f93f052bfaece617ca5';
-        // Redirect to OAuth immediately when opened from Shopify (no fetch = no CORS). Runs before React/App Bridge.
+        // Redirect to OAuth in top window so Shopify login isn't loaded in iframe (X-Frame-Options: deny).
         if (params.get('shop') && params.get('host')) {
-          window.location.replace('/api-proxy/auth/shopify?shop=' + encodeURIComponent(params.get('shop')));
+          var url = window.location.origin + '/api-proxy/auth/shopify?shop=' + encodeURIComponent(params.get('shop'));
+          window.top.location.replace(url);
           return;
         }
         function setMeta(name, content) {
