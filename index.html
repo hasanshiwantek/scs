@@ -12,11 +12,29 @@
         var shop = params.get('shop') || 'test-store.myshopify.com';
         var host = params.get('host') || '';
         var apiKey = 'a2afe2f64c425f93f052bfaece617ca5';
-        // Redirect to OAuth in top window so Shopify login isn't loaded in iframe (X-Frame-Options: deny).
-        if (params.get('shop') && params.get('host')) {
-          var url = window.location.origin + '/api-proxy/auth/shopify?shop=' + encodeURIComponent(params.get('shop'));
-          window.top.location.replace(url);
-          return;
+        // Redirect to OAuth only when needed. No backend change: use sessionStorage + redirect timestamp.
+        var shopParam = params.get('shop');
+        var hostParam = params.get('host');
+        if (params.get('installed')) {
+          try { sessionStorage.setItem('shopify_installed_' + shopParam, '1'); } catch (e) {}
+        }
+        if (shopParam && hostParam) {
+          var skipRedirect = false;
+          try {
+            if (sessionStorage.getItem('shopify_installed_' + shopParam)) skipRedirect = true;
+            var redirectTs = sessionStorage.getItem('shopify_redirect_ts_' + shopParam);
+            if (redirectTs && (Date.now() - parseInt(redirectTs, 10)) < 5 * 60 * 1000) {
+              sessionStorage.setItem('shopify_installed_' + shopParam, '1');
+              sessionStorage.removeItem('shopify_redirect_ts_' + shopParam);
+              skipRedirect = true;
+            }
+          } catch (e) {}
+          if (!skipRedirect) {
+            try { sessionStorage.setItem('shopify_redirect_ts_' + shopParam, String(Date.now())); } catch (e) {}
+            var url = window.location.origin + '/api-proxy/auth/shopify?shop=' + encodeURIComponent(shopParam);
+            window.top.location.replace(url);
+            return;
+          }
         }
         function setMeta(name, content) {
           var el = document.querySelector('meta[name="' + name + '"]');
