@@ -26,10 +26,10 @@ const TokenPage = () => {
     shopParam &&
     hostParam;
 
-  // ✅ When inside Shopify, send user to OAuth via full-page redirect (fetch would follow redirect to Shopify and hit CORS)
+  // ✅ Redirect top window to OAuth (not iframe) so Shopify accounts page can load (it blocks framing)
   useEffect(() => {
     if (IS_SHOPIFY) {
-      window.location.href = `/api-proxy/auth/shopify?shop=${shopParam}`;
+      window.top.location.href = `/api-proxy/auth/shopify?shop=${shopParam}`;
     }
   }, [IS_SHOPIFY, shopParam]);
 
