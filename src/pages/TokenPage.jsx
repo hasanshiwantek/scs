@@ -26,11 +26,18 @@ const TokenPage = () => {
     shopParam &&
     hostParam;
 
-  // ✅ Redirect top window to OAuth (not iframe) so Shopify accounts page can load (it blocks framing)
+  // ✅ Redirect to OAuth only if not already installed (sessionStorage; no backend deploy needed)
   useEffect(() => {
-    if (IS_SHOPIFY) {
-      window.top.location.href = `/api-proxy/auth/shopify?shop=${shopParam}`;
-    }
+    if (!IS_SHOPIFY) return;
+    try {
+      if (sessionStorage.getItem("shopify_installed_" + shopParam)) return;
+      var ts = sessionStorage.getItem("shopify_redirect_ts_" + shopParam);
+      if (ts && Date.now() - parseInt(ts, 10) < 5 * 60 * 1000) return;
+    } catch (e) {}
+    try {
+      sessionStorage.setItem("shopify_redirect_ts_" + shopParam, String(Date.now()));
+    } catch (e) {}
+    window.top.location.href = `/api-proxy/auth/shopify?shop=${shopParam}`;
   }, [IS_SHOPIFY, shopParam]);
 
   // ✅ Safe session token getter
