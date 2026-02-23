@@ -17,18 +17,21 @@ const AuthInitializer = () => {
 
         const sessionToken = await shopify.idToken();
 
-        const response = await fetch(`/api-proxy/auth/shopify?shop=${shop}`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-          },
-        });
+        // Backend must return JSON { redirectUrl } (use ?format=json), NOT 302 — else fetch follows redirect → CORS
+        const response = await fetch(
+          `/api-proxy/auth/shopify?shop=${encodeURIComponent(shop)}&format=json`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${sessionToken}`,
+            },
+          }
+        );
 
         const data = await response.json();
 
-        // ✅ Agar backend redirect URL deta hai toh App Bridge se navigate karo
         if (data?.redirectUrl) {
-          await shopify.redirectToUrl(data.redirectUrl); // iframe safe
+          await shopify.redirectToUrl(data.redirectUrl); // iframe-safe, no CORS
         }
 
       } catch (err) {
