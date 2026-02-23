@@ -31,9 +31,16 @@ const AuthInitializer = () => {
 
         const data = await response.json();
 
+        if (data?.alreadyInstalled) return;
+
         if (data?.redirectUrl) {
-          // Top window redirect so Shopify OAuth loads outside iframe (avoids X-Frame-Options deny)
-          (window.top || window).location.href = data.redirectUrl;
+          const url = data.redirectUrl;
+          try {
+            if (window.top && !window.top.location.origin) throw new Error('cross-origin');
+            (window.top || window).location.href = url;
+          } catch (_) {
+            window.location.assign(url);
+          }
         }
 
       } catch (err) {
