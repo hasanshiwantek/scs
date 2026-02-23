@@ -1,30 +1,22 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AppProvider, useAppBridge } from '@shopify/app-bridge-react';
+import { useAppBridge } from '@shopify/app-bridge-react'; // sirf yeh
 import { useEffect } from 'react';
 import TokenPage from './pages/TokenPage';
 import OrdersPage from './pages/OrdersPage';
 import './App.css'
 
-// ✅ Yeh component app load hote hi auth API hit karega
+// App load hote hi auth hit karo
 const AuthInitializer = () => {
   const shopify = useAppBridge();
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // 1. Session token lo App Bridge se
         const sessionToken = await shopify.idToken();
+        const shop = new URLSearchParams(window.location.search).get("shop");
 
-        // 2. Shop param URL se lo
-        const searchParams = new URLSearchParams(window.location.search);
-        const shop = searchParams.get("shop");
+        if (!shop) return;
 
-        if (!shop) {
-          console.warn("Shop param nahi mila");
-          return;
-        }
-
-        // 3. Backend API hit karo
         const response = await fetch(`/api-proxy/auth/shopify?shop=${shop}`, {
           method: "GET",
           headers: {
@@ -34,7 +26,7 @@ const AuthInitializer = () => {
         });
 
         const data = await response.json();
-        console.log("[Auth] Shopify auth response:", data);
+        console.log("[Auth] Response:", data);
 
       } catch (err) {
         console.error("[Auth] Error:", err);
@@ -42,26 +34,22 @@ const AuthInitializer = () => {
     };
 
     initAuth();
-  }, []); // sirf ek baar — app load pe
+  }, []);
 
-  return null; // kuch render nahi karta
+  return null;
 };
 
 function App() {
   return (
-    <AppProvider
-         apiKey="a2afe2f64c425f93f052bfaece617ca5" 
-      isEmbeddedApp
-    >
-      <AuthInitializer /> {/* ✅ Yahan add karo */}
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<TokenPage />} />
-          <Route path="/orders" element={<OrdersPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AppProvider>
+    // ❌ AppProvider nahi - v4 mein zaroorat nahi
+    <BrowserRouter>
+      <AuthInitializer />
+      <Routes>
+        <Route path="/" element={<TokenPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
