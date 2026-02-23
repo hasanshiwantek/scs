@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearUser } from '../store/userSlice';
+import { API_BASE_URL } from '../config';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -48,7 +49,7 @@ export default function OrdersPage() {
     loadOrders(apiKey);
   }, [apiKey, navigate]);
 
-  const apiBase = '/api-proxy'; // proxy bypasses CORS (vite dev + Vercel rewrites)
+  const apiBase = API_BASE_URL;
 
   async function loadOrders(key) {
     setLoading(true);

@@ -1,9 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAppBridge } from '@shopify/app-bridge-react'; // sirf yeh
+import { useAppBridge } from '@shopify/app-bridge-react';
 import { useEffect } from 'react';
+import { API_BASE_URL } from './config';
 import TokenPage from './pages/TokenPage';
 import OrdersPage from './pages/OrdersPage';
-import './App.css'
+import './App.css';
 
 // App load hote hi auth hit karo
 const AuthInitializer = () => {
@@ -19,7 +20,7 @@ const AuthInitializer = () => {
 
         // Backend must return JSON { redirectUrl } (use ?format=json), NOT 302 — else fetch follows redirect → CORS
         const response = await fetch(
-          `/api-proxy/auth/shopify?shop=${encodeURIComponent(shop)}&format=json`,
+          `${API_BASE_URL}/auth/shopify?shop=${encodeURIComponent(shop)}&format=json`,
           {
             method: "GET",
             headers: {
@@ -31,7 +32,7 @@ const AuthInitializer = () => {
         const data = await response.json();
 
         if (data?.redirectUrl) {
-          await shopify.redirectToUrl(data.redirectUrl); // iframe-safe, no CORS
+          window.location.href = data.redirectUrl;
         }
 
       } catch (err) {
