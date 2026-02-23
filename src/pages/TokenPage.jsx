@@ -1,7 +1,8 @@
-import {  useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setUserData } from "../store/userSlice";
+import { API_BASE_URL } from "../config";
 
 const API_KEY_STORAGE = "scs_api_key";
 
@@ -61,7 +62,7 @@ const TokenPage = () => {
         headers.Authorization = `Bearer ${sessionToken}`;
       }
 
-      const url = "/api-proxy/api/connect-app";
+      const url = `${API_BASE_URL}/api/connect-app`;
       const body = { app_token: apiKey.trim() };
       console.log("[API] connect-app REQUEST:", { url, method: "POST", body, hasAuth: !!sessionToken });
 
