@@ -1,7 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAppBridge } from '@shopify/app-bridge-react';
-import createApp from '@shopify/app-bridge';
-import { Redirect } from '@shopify/app-bridge/actions';
+import { useAppBridge } from '@shopify/app-bridge-react'; // sirf yeh
 import { useEffect } from 'react';
 import TokenPage from './pages/TokenPage';
 import OrdersPage from './pages/OrdersPage';
@@ -14,9 +12,7 @@ const AuthInitializer = () => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const params = new URLSearchParams(window.location.search);
-        const shop = params.get("shop");
-        const host = params.get("host");
+        const shop = new URLSearchParams(window.location.search).get("shop");
         if (!shop) return;
 
         const sessionToken = await shopify.idToken();
@@ -35,19 +31,7 @@ const AuthInitializer = () => {
         const data = await response.json();
 
         if (data?.redirectUrl) {
-          // CDN window.shopify has no redirectToUrl; use App Bridge Redirect.Action.REMOTE
-          if (typeof shopify.redirectToUrl === 'function') {
-            await shopify.redirectToUrl(data.redirectUrl);
-          } else if (host) {
-            const app = createApp({
-              apiKey: 'a2afe2f64c425f93f052bfaece617ca5',
-              host,
-              shop: shop || 'test-store.myshopify.com',
-            });
-            Redirect.create(app).dispatch(Redirect.Action.REMOTE, data.redirectUrl);
-          } else {
-            window.location.href = data.redirectUrl;
-          }
+          await shopify.redirectToUrl(data.redirectUrl); // iframe-safe, no CORS
         }
 
       } catch (err) {
