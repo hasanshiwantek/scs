@@ -5,50 +5,27 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>scs</title>
-    <!-- Set App Bridge config from URL (shop/host) so the CDN script doesn't throw "missing required configuration fields: shop" -->
     <script>
       (function() {
         var params = new URLSearchParams(window.location.search);
         var shop = params.get('shop') || 'test-store.myshopify.com';
         var host = params.get('host') || '';
         var apiKey = 'a2afe2f64c425f93f052bfaece617ca5';
-        // Redirect to OAuth only when needed. No backend change: use sessionStorage + redirect timestamp.
-        var shopParam = params.get('shop');
-        var hostParam = params.get('host');
-        if (params.get('installed')) {
-          try { sessionStorage.setItem('shopify_installed_' + shopParam, '1'); } catch (e) {}
-        }
-        if (shopParam && hostParam) {
-          var skipRedirect = false;
-          try {
-            if (sessionStorage.getItem('shopify_installed_' + shopParam)) skipRedirect = true;
-            var redirectTs = sessionStorage.getItem('shopify_redirect_ts_' + shopParam);
-            if (redirectTs && (Date.now() - parseInt(redirectTs, 10)) < 5 * 60 * 1000) {
-              sessionStorage.setItem('shopify_installed_' + shopParam, '1');
-              sessionStorage.removeItem('shopify_redirect_ts_' + shopParam);
-              skipRedirect = true;
-            }
-          } catch (e) {}
-          if (!skipRedirect) {
-            try { sessionStorage.setItem('shopify_redirect_ts_' + shopParam, String(Date.now())); } catch (e) {}
-            var url = window.location.origin + '/api-proxy/auth/shopify?shop=' + encodeURIComponent(shopParam);
-            window.top.location.replace(url);
-            return;
-          }
-        }
+
         function setMeta(name, content) {
           var el = document.querySelector('meta[name="' + name + '"]');
           if (!el) { el = document.createElement('meta'); el.setAttribute('name', name); document.head.appendChild(el); }
           el.setAttribute('content', content);
         }
+
         setMeta('shopify-api-key', apiKey);
         setMeta('shopify-shop', shop);
         if (host) setMeta('shopify-host', host);
       })();
     </script>
- <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" 
-  data-api-key="a2afe2f64c425f93f052bfaece617ca5">
-</script>
+    <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"
+      data-api-key="a2afe2f64c425f93f052bfaece617ca5">
+    </script>
   </head>
   <body>
     <div id="root"></div>
