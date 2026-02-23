@@ -1,13 +1,24 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAppBridge } from '@shopify/app-bridge-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { API_BASE_URL } from './config';
 import TokenPage from './pages/TokenPage';
 import OrdersPage from './pages/OrdersPage';
 import './App.css';
 
-// App load hote hi auth hit karo
+// Sirf Shopify admin (window.shopify) mein run karo — direct open par crash nahi
 const AuthInitializer = () => {
+  const [hasShopify, setHasShopify] = useState(() => typeof window !== 'undefined' && !!window.shopify);
+  useEffect(() => {
+    if (window.shopify) setHasShopify(true);
+  }, []);
+
+  if (!hasShopify) return null;
+
+  return <AuthInitializerInner />;
+};
+
+const AuthInitializerInner = () => {
   const shopify = useAppBridge();
 
   useEffect(() => {
