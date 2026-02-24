@@ -81,6 +81,7 @@ const TokenPage = () => {
           setUserData({
             user: data.data,
             apiKey: apiKey.trim(),
+            sessionToken: sessionToken,
           })
         );
 

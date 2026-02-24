@@ -26,7 +26,7 @@ export default function OrdersPage() {
   const dispatch = useDispatch();
 
   // ✅ Redux se apiKey lo
-  const apiKey = useSelector((state) => state.user.userData?.apiKey || '');
+  const apiKey = useSelector((state) => state.user.userData?.sessionToken || '');
  console.log("API Key from Redux:", apiKey); // Debugging line
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
