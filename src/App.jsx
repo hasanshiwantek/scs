@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { API_BASE_URL } from './config';
 import TokenPage from './pages/TokenPage';
 import OrdersPage from './pages/OrdersPage';
+import ProtectedRoute from './components/ProtectedRoute';
+import GuestOnlyRoute from './components/GuestOnlyRoute';
 import './App.css';
 
 // Sirf Shopify admin (window.shopify) mein run karo — direct open par crash nahi
@@ -65,8 +67,8 @@ function App() {
     <BrowserRouter>
       <AuthInitializer />
       <Routes>
-        <Route path="/" element={<TokenPage />} />
-        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/" element={<GuestOnlyRoute><TokenPage /></GuestOnlyRoute>} />
+        <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
