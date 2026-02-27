@@ -159,13 +159,6 @@ export default function OrdersPage() {
   // apiKey Redux mein nahi hai to kuch render mat karo (redirect ho raha hai)
   if (!apiKey) return null;
 
-  const EyeIcon = () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-  );
-  const PencilIcon = () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-  );
-
   const inputBase = "h-9 px-3 border border-[#c9cccf] rounded-lg text-sm text-[#202223] placeholder-[#8c9196] bg-white focus:outline-none focus:border-[#008060] focus:ring-2 focus:ring-[#008060]/20 transition";
   const selectCell = "h-8 px-2.5 rounded-md border border-[#c9cccf] bg-[#fafbfb] text-[#202223] text-sm focus:outline-none focus:border-[#008060] focus:ring-1 focus:ring-[#008060]/30 min-w-[90px] cursor-pointer hover:border-[#8c9196] transition";
 
@@ -295,7 +288,6 @@ export default function OrdersPage() {
                     <th className="py-3.5 px-4 font-semibold text-[#202223] text-left">COD</th>
                     <th className="py-3.5 px-4 font-semibold text-[#202223] text-left">KG</th>
                     <th className="py-3.5 px-4 font-semibold text-[#202223] text-left">Type</th>
-                    <th className="w-20 py-3.5 pr-5"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -341,12 +333,6 @@ export default function OrdersPage() {
                             <option key={t} value={t}>{t}</option>
                           ))}
                         </select>
-                      </td>
-                      <td className="py-3 pr-5 text-right align-middle">
-                        <span className="inline-flex items-center gap-0.5">
-                          <button type="button" className="p-2 text-[#6d7175] hover:text-[#008060] hover:bg-[#e3f1ec] rounded-md transition" title="View"><EyeIcon /></button>
-                          <button type="button" className="p-2 text-[#6d7175] hover:text-[#008060] hover:bg-[#e3f1ec] rounded-md transition" title="Edit"><PencilIcon /></button>
-                        </span>
                       </td>
                     </tr>
                   ))}
