@@ -40,38 +40,67 @@ export default function OrdersPage() {
     fulfillmentStatus: '',
   });
 
-  useEffect(() => {
-    // ✅ Redux mein apiKey nahi hai to login page pe bhejo
-    if (!apiKey) {
-      navigate('/', { replace: true });
-      return;
+    // ✅ Detect Shopify safely
+  const searchParams = new URLSearchParams(window.location.search);
+  const shopParam = searchParams.get("shop");
+  const hostParam = searchParams.get("host");
+
+  const IS_SHOPIFY =
+    typeof window !== "undefined" &&
+    typeof window.shopify !== "undefined" &&
+    shopParam &&
+    hostParam;
+
+    // ✅ Safe session token getter
+  const getSessionToken = async () => {
+    if (!IS_SHOPIFY) return null;
+
+    try {
+      const token = await window.shopify.idToken();
+      return token;
+    } catch (err) {
+      console.warn("Session token error:", err);
+      return null;
     }
-    loadOrders(apiKey);
-  }, [apiKey, navigate]);
+  };
+
+useEffect(() => {
+  if (!apiKey) {
+    navigate('/', { replace: true });
+    return;
+  }
+  loadOrders(); // ❌ key argument mat do
+}, [apiKey, navigate]);
 
   const apiBase = API_BASE_URL;
 
-  async function loadOrders(key) {
-    setLoading(true);
-    try {
-      const ordersUrl = import.meta.env.VITE_API_ORDERS_URL || `${apiBase}/api/orders`;
-      if (ordersUrl) {
-        const res = await fetch(ordersUrl, {
-          headers: { Authorization: `Bearer ${key}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setOrders(Array.isArray(data.orders) ? data.orders : data.data?.orders || []);
-          return;
-        }
-      }
-      setOrders(getMockOrders());
-    } catch {
-      setOrders(getMockOrders());
-    } finally {
-      setLoading(false);
+async function loadOrders() {
+  setLoading(true);
+  try {
+    const sessionToken = await getSessionToken(); // fresh token
+    
+    const headers = {};
+    if (sessionToken) {
+      headers.Authorization = `Bearer ${sessionToken}`;
+    } else {
+      headers.Authorization = `Bearer ${apiKey}`; // fallback
     }
+
+    const ordersUrl = import.meta.env.VITE_API_ORDERS_URL || `${apiBase}/api/orders`;
+    const res = await fetch(ordersUrl, { headers });
+    
+    if (res.ok) {
+      const data = await res.json();
+      setOrders(Array.isArray(data.orders) ? data.orders : data.data?.orders || []);
+      return;
+    }
+    setOrders(getMockOrders());
+  } catch {
+    setOrders(getMockOrders());
+  } finally {
+    setLoading(false);
   }
+}
 
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
@@ -105,23 +134,37 @@ export default function OrdersPage() {
     });
   }
 
-  function handleProceed() {
-    const selected = orders.filter((o) => selectedIds.has(o.id));
-    const submitUrl = import.meta.env.VITE_API_UPLOAD_BOOKING_URL || `${apiBase}/api/push-orders`;
-    const payload = { order_ids: selected.map((o) => o.id), orders: selected };
-    console.log("[API] push-orders REQUEST:", { url: submitUrl, method: "POST", payload });
-    if (submitUrl && selected.length > 0) {
-      fetch(submitUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify(payload),
-      })
-        .then((r) => r.json().then((data) => ({ status: r.status, ok: r.ok, data })))
-        .then((res) => console.log("[API] push-orders RESPONSE:", res))
-        .catch((err) => console.error("[API] push-orders ERROR:", err));
-    }
-    alert(`Selected ${selected.length} order(s). Integrate with your Laravel API when ready.`);
+
+// ✅ handleProceed async banao
+async function handleProceed() {
+  const selected = orders.filter((o) => selectedIds.has(o.id));
+  if (selected.length === 0) return;
+
+  const sessionToken = await getSessionToken(); // fresh token
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (sessionToken) {
+    headers.Authorization = `Bearer ${sessionToken}`;
+  } else {
+    headers.Authorization = `Bearer ${apiKey}`; // fallback
   }
+
+  const submitUrl = import.meta.env.VITE_API_UPLOAD_BOOKING_URL || `${apiBase}/api/push-orders`;
+  const payload = { order_ids: selected.map((o) => o.id), orders: selected };
+
+  console.log("[API] push-orders REQUEST:", { url: submitUrl, payload, hasSessionToken: !!sessionToken });
+
+  fetch(submitUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  })
+    .then((r) => r.json().then((data) => ({ status: r.status, ok: r.ok, data })))
+    .then((res) => console.log("[API] push-orders RESPONSE:", res))
+    .catch((err) => console.error("[API] push-orders ERROR:", err));
+
+  alert(`Selected ${selected.length} order(s).`);
+}
 
   function updateOrderField(id, field, value) {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)));
