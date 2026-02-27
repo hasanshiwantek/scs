@@ -60,7 +60,7 @@ export default function OrdersPage() {
       navigate('/', { replace: true });
       return;
     }
-    loadOrders(apiKey1);
+    loadOrders(apiKey);
   }, [apiKey, navigate]);
 
   const apiBase = API_BASE_URL;
@@ -119,17 +119,37 @@ export default function OrdersPage() {
     const submitUrl = import.meta.env.VITE_API_UPLOAD_BOOKING_URL || `${apiBase}/api/push-orders`;
     const payload = { order_ids: selected.map((o) => o.id), orders: selected };
     console.log("[API] push-orders REQUEST:", { url: submitUrl, method: "POST", payload });
-    if (submitUrl && selected.length > 0) {
-      fetch(submitUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify(payload),
+    if (!submitUrl || selected.length === 0) return;
+
+    fetch(submitUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(payload),
+    })
+      .then(async (r) => {
+        const contentType = r.headers.get('Content-Type') || '';
+        const isJson = contentType.includes('application/json');
+        let data;
+        try {
+          data = isJson ? await r.json() : { error: await r.text() };
+        } catch {
+          data = { error: 'Invalid response from server' };
+        }
+        return { status: r.status, ok: r.ok, data };
       })
-        .then((r) => r.json().then((data) => ({ status: r.status, ok: r.ok, data })))
-        .then((res) => console.log("[API] push-orders RESPONSE:", res))
-        .catch((err) => console.error("[API] push-orders ERROR:", err));
-    }
-    alert(`Selected ${selected.length} order(s). Integrate with your Laravel API when ready.`);
+      .then((res) => {
+        console.log("[API] push-orders RESPONSE:", res);
+        if (res.ok) {
+          alert(`Booking submitted for ${selected.length} order(s).`);
+        } else {
+          const msg = res.data?.message || res.data?.error || 'Server error – try again.';
+          alert(msg);
+        }
+      })
+      .catch((err) => {
+        console.error("[API] push-orders ERROR:", err);
+        alert('Server error – try again.');
+      });
   }
 
   function updateOrderField(id, field, value) {
