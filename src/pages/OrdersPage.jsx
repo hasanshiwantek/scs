@@ -40,6 +40,7 @@ export default function OrdersPage() {
 
   // ✅ Redux se apiKey lo
   const apiKey = useSelector((state) => state.user.userData?.apiKey || "");
+  const apiKey1 = useSelector((state) => state.user.userData?.sessionToken || "");
  console.log("API Key from Redux:", apiKey); // Debugging line
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +60,7 @@ export default function OrdersPage() {
       navigate('/', { replace: true });
       return;
     }
-    loadOrders(apiKey);
+    loadOrders(apiKey1);
   }, [apiKey, navigate]);
 
   const apiBase = API_BASE_URL;
