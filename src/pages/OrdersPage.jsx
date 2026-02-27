@@ -21,12 +21,33 @@ function getMockOrders() {
   ];
 }
 
+/** Map API order shape to table shape (order_number → orderNumber, shipping.*, financial_status → financialStatus, etc.) */
+function mapApiOrderToRow(api) {
+  const shipping = api.shipping || {};
+  const items = api.items || [];
+  const totalQty = items.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+  return {
+    id: api.id,
+    orderNumber: api.order_number ?? api.orderNumber ?? '—',
+    name: shipping.name ?? api.name ?? '—',
+    phone: shipping.phone ?? api.phone ?? '—',
+    address: ([shipping.address1, shipping.address2, shipping.city, shipping.province, shipping.zip].filter(Boolean).join(', ') || api.address) ?? '—',
+    city: shipping.city ?? api.city ?? '',
+    cod: api.amount != null ? Number(api.amount) : (api.cod ?? 0),
+    kg: api.kg != null ? api.kg : totalQty || 0,
+    type: api.type ?? 'Normal',
+    financialStatus: (api.financial_status ?? api.financialStatus ?? '').toLowerCase(),
+    fulfillmentStatus: (api.fulfillment_status ?? api.fulfillmentStatus ?? '').toLowerCase(),
+    cursor: api.cursor,
+  };
+}
+
 export default function OrdersPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   // ✅ Redux se apiKey lo
-  const apiKey = useSelector((state) => state.user.userData?.sessionToken || '');
+  const apiKey = useSelector((state) => state.user.userData?.apiKey || "");
  console.log("API Key from Redux:", apiKey); // Debugging line
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +82,8 @@ export default function OrdersPage() {
         });
         if (res.ok) {
           const data = await res.json();
-          setOrders(Array.isArray(data.orders) ? data.orders : data.data?.orders || []);
+          const raw = Array.isArray(data.orders) ? data.orders : data.data?.orders || [];
+          setOrders(raw.map(mapApiOrderToRow));
           return;
         }
       }
@@ -294,6 +316,7 @@ export default function OrdersPage() {
                           className={selectCell}
                         >
                           <option value="">Select</option>
+                          {CITIES.includes(row.city) ? null : (row.city ? <option value={row.city}>{row.city}</option> : null)}
                           {CITIES.map((c) => (
                             <option key={c} value={c}>{c}</option>
                           ))}
