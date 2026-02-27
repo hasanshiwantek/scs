@@ -13,14 +13,6 @@ const NAV_ITEMS = [
 const CITIES = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta'];
 const TYPES = ['Normal', 'Express', 'Return'];
 
-function getMockOrders() {
-  return [
-    { id: '1', orderNumber: 'PQA1053Test', name: 'Sumaira Khan', phone: '03331234567', address: '33/A Johar town', city: 'Karachi', cod: 5000, kg: 0.5, type: 'Normal', financialStatus: 'paid', fulfillmentStatus: 'unfulfilled' },
-    { id: '2', orderNumber: 'PQA1054', name: 'Ali Ahmed', phone: '03001234567', address: 'DHA Phase 5', city: 'Lahore', cod: 0, kg: 1, type: 'Normal', financialStatus: 'paid', fulfillmentStatus: 'fulfilled' },
-    { id: '3', orderNumber: 'PQA1055', name: 'Sara Malik', phone: '03211234567', address: 'F-7 Markaz', city: 'Islamabad', cod: 2500, kg: 0.75, type: 'Express', financialStatus: 'pending', fulfillmentStatus: 'unfulfilled' },
-  ];
-}
-
 /** Map API order shape to table shape (order_number → orderNumber, shipping.*, financial_status → financialStatus, etc.) */
 function mapApiOrderToRow(api) {
   const shipping = api.shipping || {};
@@ -76,20 +68,14 @@ export default function OrdersPage() {
     setLoading(true);
     try {
       const ordersUrl = import.meta.env.VITE_API_ORDERS_URL || `${apiBase}/api/orders`;
-      if (ordersUrl) {
-        const res = await fetch(ordersUrl, {
-          headers: { Authorization: `Bearer ${key}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const raw = Array.isArray(data.orders) ? data.orders : data.data?.orders || [];
-          setOrders(raw.map(mapApiOrderToRow));
-          return;
-        }
-      }
-      setOrders(getMockOrders());
+      const res = await fetch(ordersUrl, {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      const raw = Array.isArray(data.orders) ? data.orders : data.data?.orders || [];
+      setOrders(res.ok ? raw.map(mapApiOrderToRow) : []);
     } catch {
-      setOrders(getMockOrders());
+      setOrders([]);
     } finally {
       setLoading(false);
     }
