@@ -1,75 +1,42 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { setUserData } from "../store/userSlice";
 import { API_BASE_URL } from "../config";
 
+const API_KEY_STORAGE = "scs_api_key";
+
 const TokenPage = () => {
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState(
+    localStorage.getItem(API_KEY_STORAGE) || ""
+  );
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // ✅ Redux persist se savedApiKey lo
-  const savedApiKey = useSelector((state) => state.user.userData?.apiKey || "");
-
-  // ✅ Detect Shopify
+  // ✅ Detect Shopify safely
   const searchParams = new URLSearchParams(window.location.search);
   const shopParam = searchParams.get("shop");
   const hostParam = searchParams.get("host");
 
-  const isShopify = () =>
+  const IS_SHOPIFY =
     typeof window !== "undefined" &&
     typeof window.shopify !== "undefined" &&
     shopParam &&
     hostParam;
 
-  // ✅ Har baar fresh token
+  // ✅ Safe session token getter
   const getSessionToken = async () => {
-    if (!isShopify()) return null;
+    if (!IS_SHOPIFY) return null;
+
     try {
-      return await window.shopify.idToken();
+      const token = await window.shopify.idToken();
+      return token;
     } catch (err) {
       console.warn("Session token error:", err);
       return null;
-    }
-  };
-
-  // ✅ Agar Redux mein apiKey already hai to auto login
-  useEffect(() => {
-    if (savedApiKey) {
-      autoLogin(savedApiKey);
-    }
-  }, [savedApiKey]);
-
-  const autoLogin = async (key) => {
-    setLoading(true);
-    try {
-      const sessionToken = await getSessionToken();
-      const headers = { "Content-Type": "application/json" };
-      if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
-
-      const response = await fetch(`${API_BASE_URL}/api/connect-app`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ app_token: key }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (data?.status && data?.data) {
-        dispatch(setUserData({ user: data.data, apiKey: key }));
-        navigate("/orders");
-      } else {
-        // ✅ Auto login fail — Redux clear, manual login karne do
-        dispatch(setUserData({}));
-      }
-    } catch (err) {
-      console.error("Auto login failed:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -86,21 +53,40 @@ const TokenPage = () => {
 
     try {
       const sessionToken = await getSessionToken();
-      const headers = { "Content-Type": "application/json" };
-      if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
 
-      const response = await fetch(`${API_BASE_URL}/api/connect-app`, {
+      const headers = {
+        "Content-Type": "application/json",
+      };
+
+      if (sessionToken) {
+        headers.Authorization = `Bearer ${sessionToken}`;
+      }
+
+      const url = `${API_BASE_URL}/api/connect-app`;
+      const body = { app_token: apiKey.trim() };
+      console.log("[API] connect-app REQUEST:", { url, method: "POST", body, hasAuth: !!sessionToken });
+
+      const response = await fetch(url, {
         method: "POST",
         headers,
-        body: JSON.stringify({ app_token: apiKey.trim() }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json().catch(() => ({}));
+
       console.log("[API] connect-app RESPONSE:", { status: response.status, ok: response.ok, data });
 
       if (data?.status && data?.data) {
-        // ✅ Sirf apiKey store karo — sessionToken nahi (expire hota hai)
-        dispatch(setUserData({ user: data.data, apiKey: apiKey.trim() }));
+        dispatch(
+          setUserData({
+            user: data.data,
+            apiKey: apiKey.trim(),
+            sessionToken: sessionToken,
+          })
+        );
+
+        localStorage.setItem(API_KEY_STORAGE, apiKey.trim());
+
         navigate("/orders");
       } else {
         setError(data?.message || "Invalid API key.");
@@ -127,10 +113,12 @@ const TokenPage = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="px-8 pb-8 pt-5" autoComplete="on">
+            {/* Hidden for accessibility (browser suggests username+password form) */}
             <input type="text" name="username" autoComplete="username" className="sr-only" tabIndex={-1} aria-hidden="true" readOnly defaultValue=" " />
             <label className="block text-sm font-medium text-[#202223] mb-1.5">
               API Key
             </label>
+
             <input
               type="password"
               name="apiKey"
@@ -141,7 +129,11 @@ const TokenPage = () => {
               disabled={loading}
               className="w-full px-4 py-3 rounded-lg border border-[#c9cccf]"
             />
-            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+
+            {error && (
+              <p className="mt-2 text-sm text-red-600">{error}</p>
+            )}
+
             <button
               type="submit"
               disabled={loading}
