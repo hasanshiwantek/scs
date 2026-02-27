@@ -25,9 +25,9 @@ export default function OrdersPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // ✅ Redux se sirf apiKey lo (permanent token, expire nahi hota)
-  const apiKey = useSelector((state) => state.user.userData?.apiKey || '');
-
+  // ✅ Redux se apiKey lo
+  const apiKey = useSelector((state) => state.user.userData?.sessionToken || '');
+ console.log("API Key from Redux:", apiKey); // Debugging line
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -40,57 +40,30 @@ export default function OrdersPage() {
     fulfillmentStatus: '',
   });
 
-  const apiBase = API_BASE_URL;
-
-  // ✅ Shopify detect
-  const searchParams = new URLSearchParams(window.location.search);
-  const shopParam = searchParams.get("shop");
-  const hostParam = searchParams.get("host");
-
-  const isShopify = () =>
-    typeof window !== "undefined" &&
-    typeof window.shopify !== "undefined" &&
-    shopParam &&
-    hostParam;
-
-  // ✅ Har baar fresh session token
-  const getSessionToken = async () => {
-    if (!isShopify()) return null;
-    try {
-      return await window.shopify.idToken();
-    } catch (err) {
-      console.warn("Session token error:", err);
-      return null;
-    }
-  };
-
-  // ✅ Auth headers builder — har call se pehle fresh token
-  const getAuthHeaders = async () => {
-    const sessionToken = await getSessionToken();
-    return sessionToken
-      ? { Authorization: `Bearer ${sessionToken}` }
-      : { Authorization: `Bearer ${apiKey}` }; // fallback
-  };
-
   useEffect(() => {
+    // ✅ Redux mein apiKey nahi hai to login page pe bhejo
     if (!apiKey) {
       navigate('/', { replace: true });
       return;
     }
-    loadOrders();
+    loadOrders(apiKey);
   }, [apiKey, navigate]);
 
-  async function loadOrders() {
+  const apiBase = API_BASE_URL;
+
+  async function loadOrders(key) {
     setLoading(true);
     try {
-      const headers = await getAuthHeaders(); // ✅ fresh token
-      console.log("ordersss load token" , headers)
       const ordersUrl = import.meta.env.VITE_API_ORDERS_URL || `${apiBase}/api/orders`;
-      const res = await fetch(ordersUrl, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(Array.isArray(data.orders) ? data.orders : data.data?.orders || []);
-        return;
+      if (ordersUrl) {
+        const res = await fetch(ordersUrl, {
+          headers: { Authorization: `Bearer ${key}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setOrders(Array.isArray(data.orders) ? data.orders : data.data?.orders || []);
+          return;
+        }
       }
       setOrders(getMockOrders());
     } catch {
@@ -132,36 +105,31 @@ export default function OrdersPage() {
     });
   }
 
-  async function handleProceed() {
+  function handleProceed() {
     const selected = orders.filter((o) => selectedIds.has(o.id));
-    if (selected.length === 0) return;
-
-    const headers = await getAuthHeaders(); // ✅ fresh token
-    console.log("ordersss post token" , headers)
-    headers['Content-Type'] = 'application/json';
-
     const submitUrl = import.meta.env.VITE_API_UPLOAD_BOOKING_URL || `${apiBase}/api/push-orders`;
     const payload = { order_ids: selected.map((o) => o.id), orders: selected };
-
-    console.log("[API] push-orders REQUEST:", { url: submitUrl, payload });
-
-    fetch(submitUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    })
-      .then((r) => r.json().then((data) => ({ status: r.status, ok: r.ok, data })))
-      .then((res) => console.log("[API] push-orders RESPONSE:", res))
-      .catch((err) => console.error("[API] push-orders ERROR:", err));
-
-    alert(`Selected ${selected.length} order(s).`);
+    console.log("[API] push-orders REQUEST:", { url: submitUrl, method: "POST", payload });
+    if (submitUrl && selected.length > 0) {
+      fetch(submitUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify(payload),
+      })
+        .then((r) => r.json().then((data) => ({ status: r.status, ok: r.ok, data })))
+        .then((res) => console.log("[API] push-orders RESPONSE:", res))
+        .catch((err) => console.error("[API] push-orders ERROR:", err));
+    }
+    alert(`Selected ${selected.length} order(s). Integrate with your Laravel API when ready.`);
   }
 
   function updateOrderField(id, field, value) {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)));
   }
 
+  // apiKey Redux mein nahi hai to kuch render mat karo (redirect ho raha hai)
   if (!apiKey) return null;
+
   const EyeIcon = () => (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
   );
