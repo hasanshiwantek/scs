@@ -13,24 +13,26 @@ const NAV_ITEMS = [
 const CITIES = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta'];
 const TYPES = ['Normal', 'Express', 'Return'];
 
-/** Map API order shape to table shape (order_number → orderNumber, shipping.*, financial_status → financialStatus, etc.) */
-function mapApiOrderToRow(api) {
-  const shipping = api.shipping || {};
-  const items = api.items || [];
-  const totalQty = items.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+function getOrderId(order) {
+  return order?.id ?? order?.order_id ?? order?.order_number ?? order?.orderNumber;
+}
+
+function getOrderView(order) {
+  const shipping = order?.shipping || {};
+  const items = Array.isArray(order?.items) ? order.items : [];
+  const totalQty = items.reduce((sum, i) => sum + (Number(i?.quantity) || 0), 0);
+
   return {
-    id: api.id,
-    orderNumber: api.order_number ?? api.orderNumber ?? '—',
-    name: shipping.name ?? api.name ?? '—',
-    phone: shipping.phone ?? api.phone ?? '—',
-    address: ([shipping.address1, shipping.address2, shipping.city, shipping.province, shipping.zip].filter(Boolean).join(', ') || api.address) ?? '—',
-    city: shipping.city ?? api.city ?? '',
-    cod: api.amount != null ? Number(api.amount) : (api.cod ?? 0),
-    kg: api.kg != null ? api.kg : totalQty || 0,
-    type: api.type ?? 'Normal',
-    financialStatus: (api.financial_status ?? api.financialStatus ?? '').toLowerCase(),
-    fulfillmentStatus: (api.fulfillment_status ?? api.fulfillmentStatus ?? '').toLowerCase(),
-    cursor: api.cursor,
+    orderNumber: order?.order_number ?? order?.orderNumber ?? order?.name ?? '—',
+    name: shipping?.name ?? order?.name ?? '—',
+    phone: shipping?.phone ?? order?.phone ?? '—',
+    address: ([shipping?.address1, shipping?.address2, shipping?.city, shipping?.province, shipping?.zip].filter(Boolean).join(', ') || order?.address) ?? '—',
+    city: shipping?.city ?? order?.city ?? '—',
+    cod: order?.amount ?? order?.cod ?? '—',
+    kg: (order?.kg ?? totalQty) || '—',
+    type: order?.type ?? '—',
+    financialStatus: (order?.financial_status ?? order?.financialStatus ?? '').toLowerCase(),
+    fulfillmentStatus: (order?.fulfillment_status ?? order?.fulfillmentStatus ?? '').toLowerCase(),
   };
 }
 
@@ -74,7 +76,7 @@ export default function OrdersPage() {
       });
       const data = await res.json().catch(() => ({}));
       const raw = Array.isArray(data.orders) ? data.orders : data.data?.orders || [];
-      setOrders(res.ok ? raw.map(mapApiOrderToRow) : []);
+      setOrders(res.ok ? raw : []);
     } catch {
       setOrders([]);
     } finally {
@@ -84,17 +86,18 @@ export default function OrdersPage() {
 
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
-      if (filters.orderNumber && !String(o.orderNumber || o.name).toLowerCase().includes(filters.orderNumber.toLowerCase())) return false;
-      if (filters.city && (o.city || '') !== filters.city) return false;
-      if (filters.financialStatus && (o.financialStatus || '') !== filters.financialStatus) return false;
-      if (filters.fulfillmentStatus && (o.fulfillmentStatus || '') !== filters.fulfillmentStatus) return false;
+      const row = getOrderView(o);
+      if (filters.orderNumber && !String(row.orderNumber || row.name).toLowerCase().includes(filters.orderNumber.toLowerCase())) return false;
+      if (filters.city && (row.city || '') !== filters.city) return false;
+      if (filters.financialStatus && (row.financialStatus || '') !== filters.financialStatus) return false;
+      if (filters.fulfillmentStatus && (row.fulfillmentStatus || '') !== filters.fulfillmentStatus) return false;
       return true;
     });
   }, [orders, filters]);
 
   const selectAllRef = useRef(null);
-  const allSelected = filteredOrders.length > 0 && filteredOrders.every((o) => selectedIds.has(o.id));
-  const someSelected = filteredOrders.some((o) => selectedIds.has(o.id));
+  const allSelected = filteredOrders.length > 0 && filteredOrders.every((o) => selectedIds.has(getOrderId(o)));
+  const someSelected = filteredOrders.some((o) => selectedIds.has(getOrderId(o)));
 
   useEffect(() => {
     if (selectAllRef.current) selectAllRef.current.indeterminate = someSelected && !allSelected;
@@ -102,7 +105,7 @@ export default function OrdersPage() {
 
   function toggleSelectAll() {
     if (allSelected) setSelectedIds(new Set());
-    else setSelectedIds(new Set(filteredOrders.map((o) => o.id)));
+    else setSelectedIds(new Set(filteredOrders.map((o) => getOrderId(o))));
   }
 
   function toggleSelect(id) {
@@ -115,9 +118,9 @@ export default function OrdersPage() {
   }
 
   function handleProceed() {
-    const selected = orders.filter((o) => selectedIds.has(o.id));
+    const selected = orders.filter((o) => selectedIds.has(getOrderId(o)));
     const submitUrl = import.meta.env.VITE_API_UPLOAD_BOOKING_URL || `${apiBase}/api/push-orders`;
-    const payload = { order_ids: selected.map((o) => o.id), orders: selected };
+    const payload = { order_ids: selected.map((o) => getOrderId(o)), orders: selected };
     console.log("[API] push-orders REQUEST:", { url: submitUrl, method: "POST", payload });
     if (!submitUrl || selected.length === 0) return;
 
@@ -150,10 +153,6 @@ export default function OrdersPage() {
         console.error("[API] push-orders ERROR:", err);
         alert('Server error – try again.');
       });
-  }
-
-  function updateOrderField(id, field, value) {
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)));
   }
 
   // apiKey Redux mein nahi hai to kuch render mat karo (redirect ho raha hai)
@@ -291,51 +290,33 @@ export default function OrdersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredOrders.map((row) => (
+                  {filteredOrders.map((row) => {
+                    const rowView = getOrderView(row);
+                    const rowId = getOrderId(row);
+                    return (
                     <tr
-                      key={row.id}
+                      key={String(rowId)}
                       className="border-b border-[#e1e3e5] last:border-b-0 hover:bg-[#f9fafb] transition"
                     >
                       <td className="py-3 pl-5 align-middle">
                         <input
                           type="checkbox"
-                          checked={selectedIds.has(row.id)}
-                          onChange={() => toggleSelect(row.id)}
+                          checked={selectedIds.has(rowId)}
+                          onChange={() => toggleSelect(rowId)}
                           className="rounded border-[#c9cccf] text-[#008060] focus:ring-[#008060] w-4 h-4 cursor-pointer"
                         />
                       </td>
-                      <td className="py-3 px-4 text-[#202223] font-medium align-middle">{row.orderNumber || row.name || '—'}</td>
-                      <td className="py-3 px-4 text-[#202223] align-middle">{row.name || '—'}</td>
-                      <td className="py-3 px-4 text-[#202223] align-middle">{row.phone || '—'}</td>
-                      <td className="py-3 px-4 text-[#202223] align-middle max-w-[180px] truncate" title={row.address}>{row.address || '—'}</td>
-                      <td className="py-3 px-4 align-middle">
-                        <select
-                          value={row.city || ''}
-                          onChange={(e) => updateOrderField(row.id, 'city', e.target.value)}
-                          className={selectCell}
-                        >
-                          <option value="">Select</option>
-                          {CITIES.includes(row.city) ? null : (row.city ? <option value={row.city}>{row.city}</option> : null)}
-                          {CITIES.map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-3 px-4 text-[#202223] align-middle tabular-nums">{row.cod ?? '—'}</td>
-                      <td className="py-3 px-4 text-[#202223] align-middle tabular-nums">{row.kg ?? '—'}</td>
-                      <td className="py-3 px-4 align-middle">
-                        <select
-                          value={row.type || 'Normal'}
-                          onChange={(e) => updateOrderField(row.id, 'type', e.target.value)}
-                          className={selectCell}
-                        >
-                          {TYPES.map((t) => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
-                        </select>
-                      </td>
+                      <td className="py-3 px-4 text-[#202223] font-medium align-middle">{rowView.orderNumber || '—'}</td>
+                      <td className="py-3 px-4 text-[#202223] align-middle">{rowView.name || '—'}</td>
+                      <td className="py-3 px-4 text-[#202223] align-middle">{rowView.phone || '—'}</td>
+                      <td className="py-3 px-4 text-[#202223] align-middle max-w-[180px] truncate" title={rowView.address}>{rowView.address || '—'}</td>
+                      <td className="py-3 px-4 text-[#202223] align-middle">{rowView.city || '—'}</td>
+                      <td className="py-3 px-4 text-[#202223] align-middle tabular-nums">{rowView.cod ?? '—'}</td>
+                      <td className="py-3 px-4 text-[#202223] align-middle tabular-nums">{rowView.kg ?? '—'}</td>
+                      <td className="py-3 px-4 text-[#202223] align-middle">{rowView.type || '—'}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
